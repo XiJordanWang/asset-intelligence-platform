@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: asset-intelligence
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/assetintel}
+    username: ${DB_USER:assetintel}
+    password: ${DB_PASSWORD:assetintel}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+assetintel:
+  demo:
+    # Seed the database with a fictional NZ company on startup when it is empty.
+    seed-on-startup: ${DEMO_SEED:true}
+    random-seed: 2026
+    asset-count: 2500
+    request-count: 60

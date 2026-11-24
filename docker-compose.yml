@@ -1,0 +1,31 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: assetintel
+      POSTGRES_USER: assetintel
+      POSTGRES_PASSWORD: assetintel
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U assetintel"]
+      interval: 5s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/assetintel
+      DB_USER: assetintel
+      DB_PASSWORD: assetintel
+      DEMO_SEED: "true"
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:

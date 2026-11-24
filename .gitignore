@@ -1,0 +1,20 @@
+# Java
+backend/target/
+*.class
+*.log
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# The UI is copied here only inside the Docker build
+backend/src/main/resources/static/
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Secrets
+.env
