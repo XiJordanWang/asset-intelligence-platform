@@ -1,8 +1,8 @@
 package io.github.xijordanwang.assetintel;
 
-import io.github.xijordanwang.assetintel.approval.InvestmentRequestRepository;
-import io.github.xijordanwang.assetintel.demo.DemoDataSeeder;
-import io.github.xijordanwang.assetintel.demo.DemoProperties;
+import io.github.xijordanwang.assetintel.approval.repository.InvestmentRequestRepository;
+import io.github.xijordanwang.assetintel.demo.service.DemoDataSeeder;
+import io.github.xijordanwang.assetintel.demo.config.DemoProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
+@org.springframework.security.test.context.support.WithMockUser(username = "viewer", roles = "ADMIN") // reads need a signed-in user who can see every area
 @AutoConfigureMockMvc
 @DirtiesContext
 class DemoSeedAndDashboardTest {
@@ -37,7 +38,12 @@ class DemoSeedAndDashboardTest {
                 .andExpect(jsonPath("$.totals.siteCount").value(48))
                 .andExpect(jsonPath("$.plants.length()").value(4))
                 .andExpect(jsonPath("$.sites.length()").value(48))
-                .andExpect(jsonPath("$.totals.netBookValue", greaterThan(0.0)));
+                .andExpect(jsonPath("$.totals.netBookValue", greaterThan(0.0)))
+                .andExpect(jsonPath("$.lastTwelveMonths.length()").value(12))
+                .andExpect(jsonPath("$.assetsByStatus.IN_SERVICE", greaterThan(0)));
+
+        mvc.perform(get("/api/changes")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()", greaterThan(0)));
 
         mvc.perform(get("/api/assets").param("category", "VEHICLE").param("size", "5"))
                 .andExpect(status().isOk())

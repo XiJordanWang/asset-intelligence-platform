@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
 import type { EChartsOption } from 'echarts'
 import { api, label, millions, type Dashboard } from '../api'
@@ -43,6 +44,33 @@ export default function Cockpit() {
     }
   }, [data])
 
+  const trendChart = useMemo<EChartsOption | null>(() => {
+    if (!data) return null
+    return {
+      tooltip: { trigger: 'axis' },
+      legend: { top: 0 },
+      grid: { left: 60, right: 16, top: 36, bottom: 30 },
+      xAxis: { type: 'category', data: data.lastTwelveMonths.map(m => m.month) },
+      yAxis: { type: 'value', axisLabel: { formatter: (v: number) => `${v / 1e6}m` } },
+      series: [
+        { name: 'Additions', type: 'bar', data: data.lastTwelveMonths.map(m => m.additionsValue), itemStyle: { color: '#2dd4bf' } },
+        { name: 'Retirements', type: 'bar', data: data.lastTwelveMonths.map(m => m.retirementsValue), itemStyle: { color: '#f87171' } },
+      ],
+    }
+  }, [data])
+
+  const statusChart = useMemo<EChartsOption | null>(() => {
+    if (!data) return null
+    return {
+      tooltip: { trigger: 'item' },
+      series: [{
+        type: 'pie', radius: ['45%', '72%'],
+        data: Object.entries(data.assetsByStatus).map(([name, value]) => ({ name: label(name), value })),
+        label: { color: '#cbd5e1' },
+      }],
+    }
+  }, [data])
+
   if (error) return <p className="error">Could not load the dashboard: {error}</p>
   if (!data) return <p className="muted">Loading…</p>
 
@@ -79,6 +107,16 @@ export default function Cockpit() {
           {categoryChart && <EChart option={categoryChart} height={240} />}
         </div>
       </div>
+      <div className="grid-2">
+        <div className="panel">
+          <h2>Additions and retirements, last 12 months (original value)</h2>
+          {trendChart && <EChart option={trendChart} />}
+        </div>
+        <div className="panel">
+          <h2>Assets by usage status</h2>
+          {statusChart && <EChart option={statusChart} />}
+        </div>
+      </div>
       <div className="panel">
         <h2>Plant breakdown</h2>
         <table>
@@ -88,7 +126,7 @@ export default function Cockpit() {
           <tbody>
             {data.plants.map(p => (
               <tr key={p.plantCode}>
-                <td>{p.plantCode}</td>
+                <td><Link to={`/plants/${p.plantCode}`}>{p.plantCode}</Link></td>
                 <td className="num">{millions(p.originalValue)}</td>
                 <td className="num">{millions(p.netBookValue)}</td>
                 <td className="num">{millions(p.yearToDateDepreciation)}</td>

@@ -1,11 +1,11 @@
 package io.github.xijordanwang.assetintel;
 
-import io.github.xijordanwang.assetintel.approval.ApprovalPolicy;
+import io.github.xijordanwang.assetintel.approval.service.ApprovalPolicy;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 
-import static io.github.xijordanwang.assetintel.approval.ApproverRole.*;
+import static io.github.xijordanwang.assetintel.approval.entity.ApproverRole.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ApprovalPolicyTest {

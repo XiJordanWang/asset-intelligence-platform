@@ -1,8 +1,8 @@
 package io.github.xijordanwang.assetintel;
 
-import io.github.xijordanwang.assetintel.asset.Asset;
-import io.github.xijordanwang.assetintel.demo.MockDataGenerator;
-import io.github.xijordanwang.assetintel.site.Site;
+import io.github.xijordanwang.assetintel.asset.entity.Asset;
+import io.github.xijordanwang.assetintel.demo.service.MockDataGenerator;
+import io.github.xijordanwang.assetintel.site.entity.Site;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;

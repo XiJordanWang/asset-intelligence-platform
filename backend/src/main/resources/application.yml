@@ -1,16 +1,23 @@
 spring:
   application:
     name: asset-intelligence
+  # Zero setup by default: an embedded H2 database stored in backend/data/ (PostgreSQL compatibility mode).
+  # Set DB_URL, DB_USER and DB_PASSWORD to use PostgreSQL instead (Docker Compose does this).
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/assetintel}
-    username: ${DB_USER:assetintel}
-    password: ${DB_PASSWORD:assetintel}
+    url: ${DB_URL:jdbc:h2:file:./data/assetintel;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;AUTO_SERVER=TRUE}
+    username: ${DB_USER:sa}
+    password: ${DB_PASSWORD:}
   jpa:
     open-in-view: false
     hibernate:
       ddl-auto: validate
   flyway:
     enabled: true
+
+server:
+  # Hosting platforms such as Render pass the port to listen on in PORT.
+  port: ${PORT:8080}
+  shutdown: graceful
 
 management:
   endpoints:

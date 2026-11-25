@@ -18,3 +18,5 @@ backend/src/main/resources/static/
 
 # Secrets
 .env
+data/
+*.tsbuildinfo

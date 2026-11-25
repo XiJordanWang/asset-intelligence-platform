@@ -1,25 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, label, money, ROLES, type ApproverRole, type InvestmentRequest } from '../api'
-
-const DEMO_USERS: Record<ApproverRole, string> = {
-  PLANT_MANAGER: 'tama.plantmanager',
-  FINANCE_CONTROLLER: 'grace.finance',
-  CFO: 'hemi.cfo',
-}
+import { api, label, money, type InvestmentRequest } from '../api'
+import { canDecide, hasRole, plantOf, useAuth, whoDecides } from '../auth'
+import SignInHint from '../components/SignInHint'
 
 export default function RequestDetail() {
   const { reference = '' } = useParams()
+  const { user } = useAuth()
   const [req, setReq] = useState<InvestmentRequest | null>(null)
-  const [role, setRole] = useState<ApproverRole>('PLANT_MANAGER')
   const [comment, setComment] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(() => {
-    api.request(reference).then(r => {
-      setReq(r)
-      if (r.waitingOn) setRole(r.waitingOn)
-    }).catch(e => setError(e.message))
+    api.request(reference).then(setReq).catch(e => setError(e.message))
   }, [reference])
 
   useEffect(load, [load])
@@ -66,24 +59,26 @@ export default function RequestDetail() {
           </ol>
 
           {req.status === 'DRAFT' && (
-            <button className="primary" onClick={() => run(() => api.submit(req.reference))}>Submit for approval</button>
+            hasRole(user, 'REQUESTER', 'PLANT_MANAGER', 'ADMIN')
+              ? <button className="primary" onClick={() => run(() => api.submit(req.reference))}>Submit for approval</button>
+              : <SignInHint who="a requester" action="submit this request" />
           )}
-          {req.status === 'PENDING_APPROVAL' && (
-            <div className="form">
-              <label>Act as (demo)
-                <select value={role} onChange={e => setRole(e.target.value as ApproverRole)}>
-                  {ROLES.map(r => <option key={r} value={r}>{label(r)} ({DEMO_USERS[r]})</option>)}
-                </select>
-              </label>
-              <label>Comment<input value={comment} onChange={e => setComment(e.target.value)} /></label>
-              <div className="actions">
-                <button className="primary" onClick={() => run(() => api.decide(req.reference, true, role, DEMO_USERS[role], comment))}>Approve</button>
-                <button className="danger" onClick={() => run(() => api.decide(req.reference, false, role, DEMO_USERS[role], comment))}>Reject</button>
+          {req.status === 'PENDING_APPROVAL' && req.waitingOn && (
+            canDecide(user, req.waitingOn, plantOf(req.siteCode)) ? (
+              <div className="form">
+                <p className="muted">Deciding as <strong>{user!.displayName}</strong> ({label(req.waitingOn)}).</p>
+                <label>Comment<input value={comment} onChange={e => setComment(e.target.value)} /></label>
+                <div className="actions">
+                  <button className="primary" onClick={() => run(() => api.decide(req.reference, true, comment))}>Approve</button>
+                  <button className="danger" onClick={() => run(() => api.decide(req.reference, false, comment))}>Reject</button>
+                </div>
               </div>
-            </div>
+            ) : <SignInHint who={whoDecides(req.waitingOn, plantOf(req.siteCode))} action="decide this step" />
           )}
           {req.status === 'APPROVED' && (
-            <button className="primary" onClick={() => run(() => api.capitalise(req.reference))}>Capitalise into asset register</button>
+            hasRole(user, 'FINANCE_CONTROLLER', 'ADMIN')
+              ? <button className="primary" onClick={() => run(() => api.capitalise(req.reference))}>Capitalise into asset register</button>
+              : <SignInHint who="finance" action="capitalise this request" />
           )}
           {error && <p className="error">{error}</p>}
         </div>

@@ -1,0 +1,6 @@
+# No-Docker mode: an embedded H2 database stored in backend/data/, in PostgreSQL compatibility mode.
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/assetintel;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;AUTO_SERVER=TRUE
+    username: sa
+    password: ""

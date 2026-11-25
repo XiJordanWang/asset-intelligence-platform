@@ -18,7 +18,7 @@ jobs:
           distribution: temurin
           java-version: 21
           cache: maven
-      - run: mvn -B verify
+      - run: mvn -B verify -DskipUi
 
   frontend:
     runs-on: ubuntu-latest

@@ -1,7 +1,7 @@
 package io.github.xijordanwang.assetintel;
 
-import io.github.xijordanwang.assetintel.site.Site;
-import io.github.xijordanwang.assetintel.site.SiteRepository;
+import io.github.xijordanwang.assetintel.site.entity.Site;
+import io.github.xijordanwang.assetintel.site.repository.SiteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,11 +19,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
+@org.springframework.security.test.context.support.WithMockUser(username = "viewer", roles = "ADMIN") // reads need a signed-in user who can see every area
 @AutoConfigureMockMvc
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class ApprovalWorkflowTest {
 
     @Autowired MockMvc mvc;
+
+    /** The user the next POST is sent as. Read when the request runs, so a helper can switch it just before. */
+    private org.springframework.test.web.servlet.request.RequestPostProcessor actor = TestUsers.as("aroha");
+
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder post(String url, Object... vars) {
+        return org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(url, vars)
+                .with(request -> actor.postProcessRequest(request));
+    }
     @Autowired SiteRepository sites;
 
     @BeforeEach
@@ -44,6 +53,7 @@ class ApprovalWorkflowTest {
     }
 
     private String decision(String role, String by) {
+        actor = TestUsers.as(by);
         return """
                 {"role":"%s","decidedBy":"%s","comment":"ok"}""".formatted(role, by);
     }
@@ -57,10 +67,14 @@ class ApprovalWorkflowTest {
                 .andExpect(jsonPath("$.waitingOn").value("PLANT_MANAGER"))
                 .andExpect(jsonPath("$.steps.length()").value(2));
 
-        // Finance cannot approve before the plant manager.
+        // Finance cannot approve before the plant manager: the step belongs to someone else.
         mvc.perform(post("/api/requests/{r}/approve", ref).contentType(MediaType.APPLICATION_JSON)
                         .content(decision("FINANCE_CONTROLLER", "grace")))
-                .andExpect(status().isConflict());
+                .andExpect(status().isForbidden());
+        // Neither can another plant's manager.
+        mvc.perform(post("/api/requests/{r}/approve", ref).contentType(MediaType.APPLICATION_JSON)
+                        .content(decision("PLANT_MANAGER", "nikau")))
+                .andExpect(status().isForbidden());
 
         mvc.perform(post("/api/requests/{r}/approve", ref).contentType(MediaType.APPLICATION_JSON)
                         .content(decision("PLANT_MANAGER", "tama")))
@@ -81,10 +95,11 @@ class ApprovalWorkflowTest {
 
     @Test
     void requesterCannotApproveOwnRequest() throws Exception {
+        actor = TestUsers.as("tama"); // a plant manager raising their own request
         String ref = createDraft("10000");
         mvc.perform(post("/api/requests/{r}/submit", ref));
         mvc.perform(post("/api/requests/{r}/approve", ref).contentType(MediaType.APPLICATION_JSON)
-                        .content(decision("PLANT_MANAGER", "aroha")))
+                        .content(decision("PLANT_MANAGER", "tama")))
                 .andExpect(status().isConflict());
     }
 
@@ -103,7 +118,24 @@ class ApprovalWorkflowTest {
         mvc.perform(post("/api/requests/{r}/reject", ref).contentType(MediaType.APPLICATION_JSON)
                         .content(decision("PLANT_MANAGER", "tama")))
                 .andExpect(jsonPath("$.status").value("REJECTED"));
+        actor = TestUsers.as("grace");
         mvc.perform(post("/api/requests/{r}/capitalise", ref)).andExpect(status().isConflict());
+    }
+
+    @Test
+    void writesNeedASignedInUserWithTheRightRole() throws Exception {
+        String ref = createDraft("10000");
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/requests/{r}/submit", ref)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous())
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isUnauthorized());
+        actor = TestUsers.as("kiri");
+        mvc.perform(post("/api/requests/{r}/submit", ref)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/requests/{r}", ref)).andExpect(status().isOk());
+        // Visitors who have not signed in see nothing.
+        mvc.perform(get("/api/requests/{r}", ref)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous()))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

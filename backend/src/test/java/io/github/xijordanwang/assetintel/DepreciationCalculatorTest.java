@@ -1,7 +1,7 @@
 package io.github.xijordanwang.assetintel;
 
-import io.github.xijordanwang.assetintel.asset.AssetCategory;
-import io.github.xijordanwang.assetintel.asset.DepreciationCalculator;
+import io.github.xijordanwang.assetintel.asset.entity.AssetCategory;
+import io.github.xijordanwang.assetintel.asset.service.DepreciationCalculator;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

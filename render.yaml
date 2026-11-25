@@ -1,0 +1,14 @@
+# One-click deploy on Render (https://render.com). Free plan: the service sleeps after 15 minutes idle
+# and wakes on the next visit. The embedded database is rebuilt with fresh demo data on every start,
+# so visitors can try every workflow without breaking anything for good.
+services:
+  - type: web
+    name: asset-intelligence
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health
+    autoDeploy: true
+    envVars:
+      - key: DEMO_SEED
+        value: "true"

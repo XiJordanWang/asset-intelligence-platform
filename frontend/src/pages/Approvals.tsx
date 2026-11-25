@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api, CATEGORIES, label, money, type InvestmentRequest, type RequestStatus, type Site } from '../api'
+import { canDecide, hasRole, plantOf, useAuth } from '../auth'
+import SignInHint from '../components/SignInHint'
 
 const TABS: (RequestStatus | 'ALL')[] = ['ALL', 'DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'CAPITALISED', 'REJECTED']
 
@@ -8,6 +10,8 @@ export default function Approvals() {
   const [tab, setTab] = useState<RequestStatus | 'ALL'>('PENDING_APPROVAL')
   const [items, setItems] = useState<InvestmentRequest[]>([])
   const [showForm, setShowForm] = useState(false)
+  const { user } = useAuth()
+  const canRaise = hasRole(user, 'REQUESTER', 'PLANT_MANAGER', 'ADMIN')
 
   useEffect(() => {
     api.requests(tab === 'ALL' ? undefined : tab).then(setItems).catch(() => setItems([]))
@@ -17,9 +21,10 @@ export default function Approvals() {
     <section>
       <div className="row-between">
         <h1>Lifecycle approval</h1>
-        <button className="primary" onClick={() => setShowForm(s => !s)}>{showForm ? 'Close' : 'New investment request'}</button>
+        {canRaise && <button className="primary" onClick={() => setShowForm(s => !s)}>{showForm ? 'Close' : 'New investment request'}</button>}
       </div>
-      {showForm && <NewRequestForm />}
+      {!canRaise && <SignInHint who="a requester or plant manager" action="raise a request" />}
+      {showForm && canRaise && <NewRequestForm />}
       <div className="tabs">
         {TABS.map(t => (
           <button key={t} className={t === tab ? 'tab active' : 'tab'} onClick={() => setTab(t)}>{label(t)}</button>
@@ -38,7 +43,10 @@ export default function Approvals() {
                 <td>{label(r.category)}</td>
                 <td>{r.siteCode}</td>
                 <td className="num">{money(r.amount)}</td>
-                <td><span className={`pill r-${r.status.toLowerCase()}`}>{label(r.status)}</span></td>
+                <td>
+                  <span className={`pill r-${r.status.toLowerCase()}`}>{label(r.status)}</span>
+                  {canDecide(user, r.waitingOn, plantOf(r.siteCode)) && <span className="pill your-turn">Your turn</span>}
+                </td>
                 <td>{r.requestedBy}</td>
               </tr>
             ))}
@@ -55,7 +63,7 @@ function NewRequestForm() {
   const [sites, setSites] = useState<Site[]>([])
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
-    title: '', justification: '', category: 'PLANT_MACHINERY', amount: '25000', siteCode: 'HLZ-01', requestedBy: 'demo.requester',
+    title: '', justification: '', category: 'PLANT_MACHINERY', amount: '25000', siteCode: 'HLZ-01',
   })
 
   useEffect(() => {
